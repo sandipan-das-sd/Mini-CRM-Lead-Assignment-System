@@ -36,4 +36,14 @@ async function update(req, res, next) {
   }
 }
 
-module.exports = { create, list, get, update };
+async function changeStatus(req, res, next) {
+  try {
+    return res.json({
+      data: { lead: await service.changeStatus(req.params.id, req.body, req.user) },
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+module.exports = { create, list, get, update, changeStatus };

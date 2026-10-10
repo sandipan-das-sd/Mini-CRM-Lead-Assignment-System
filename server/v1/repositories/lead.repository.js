@@ -1,8 +1,9 @@
 const pool = require('../db/connection/pool');
 
-const SELECT_COLUMNS = `
+const LEAD_COLUMNS = `
   l.id, l.name, l.phone, l.email, l.source, l.status, l.assigned_user_id,
-  l.version, l.created_by, l.updated_by, l.created_at, l.updated_at,
+  l.version, l.created_by, l.updated_by, l.created_at, l.updated_at`;
+const SELECT_COLUMNS = `${LEAD_COLUMNS},
   u.name AS assigned_user_name, u.email AS assigned_user_email`;
 
 async function create(input, db = pool) {
@@ -21,9 +22,10 @@ async function findById(id, scope = {}, db = pool, { forUpdate = false } = {}) {
     conditions.push('l.assigned_user_id = ?');
     values.push(scope.assignedUserId);
   }
+  const select = forUpdate ? LEAD_COLUMNS : SELECT_COLUMNS;
+  const join = forUpdate ? '' : 'LEFT JOIN users u ON u.id = l.assigned_user_id';
   const [rows] = await db.execute(
-    `SELECT ${SELECT_COLUMNS}
-     FROM leads l LEFT JOIN users u ON u.id = l.assigned_user_id
+    `SELECT ${select} FROM leads l ${join}
      WHERE ${conditions.join(' AND ')} LIMIT 1${forUpdate ? ' FOR UPDATE' : ''}`,
     values,
   );
@@ -41,8 +43,7 @@ async function findDuplicates({ phone, email, excludeId }, db = pool) {
     contacts.push('email = ?');
     values.push(email);
   }
-  if (!contacts.length) 
-    return [];
+  if (!contacts.length) return [];
   const conditions = [`(${contacts.join(' OR ')})`, 'deleted_at IS NULL'];
   if (excludeId) {
     conditions.push('id <> ?');
@@ -106,8 +107,7 @@ async function list(filters, scope = {}, db = pool) {
 async function update(id, version, changes, actorId, db = pool) {
   const allowed = ['name', 'phone', 'email', 'source'];
   const fields = Object.keys(changes).filter((key) => allowed.includes(key));
-  if (!fields.length) 
-    return false;
+  if (!fields.length) return false;
   const setters = fields.map((field) => `${field} = ?`);
   const values = fields.map((field) => changes[field]);
   const [result] = await db.execute(
@@ -118,4 +118,23 @@ async function update(id, version, changes, actorId, db = pool) {
   return result.affectedRows === 1;
 }
 
-module.exports = { create, findById, findDuplicates, list, update };
+async function assign(id, version, assignedUserId, actorId, db = pool) {
+  const [result] = await db.execute(
+    `UPDATE leads
+     SET assigned_user_id = ?, updated_by = ?, version = version + 1
+     WHERE id = ? AND version = ? AND deleted_at IS NULL`,
+    [assignedUserId, actorId, id, version],
+  );
+  return result.affectedRows === 1;
+}
+
+async function changeStatus(id, version, status, actorId, db = pool) {
+  const [result] = await db.execute(
+    `UPDATE leads SET status = ?, updated_by = ?, version = version + 1
+     WHERE id = ? AND version = ? AND deleted_at IS NULL`,
+    [status, actorId, id, version],
+  );
+  return result.affectedRows === 1;
+}
+
+module.exports = { create, findById, findDuplicates, list, update, assign, changeStatus };

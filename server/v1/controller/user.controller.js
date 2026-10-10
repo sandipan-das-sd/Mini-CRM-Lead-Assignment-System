@@ -11,15 +11,13 @@ async function create(req, res, next) {
 async function list(req, res, next) {
   try {
     const result = await service.listUsers(req.query);
-    return res.json(
-      {
-         data: 
-         { 
-          users: result.items 
-        }, 
-        
-        pagination: result.pagination }
-      );
+    return res.json({
+      data: {
+        users: result.items,
+      },
+
+      pagination: result.pagination,
+    });
   } catch (error) {
     return next(error);
   }
@@ -27,13 +25,11 @@ async function list(req, res, next) {
 
 async function get(req, res, next) {
   try {
-    return res.json(
-      { data:
-         {
-           user:
-           await service.getUser(req.params.id) }
-          
-          });
+    return res.json({
+      data: {
+        user: await service.getUser(req.params.id),
+      },
+    });
   } catch (error) {
     return next(error);
   }
@@ -43,12 +39,10 @@ async function updateStatus(req, res, next) {
   try {
     const user = await service.updateStatus(req.params.id, req.body.isActive, req.user.id);
     return res.json({
-      
       data: {
-        
-        user 
-      } 
-      });
+        user,
+      },
+    });
   } catch (error) {
     return next(error);
   }

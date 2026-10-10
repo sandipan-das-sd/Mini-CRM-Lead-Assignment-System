@@ -1,0 +1,29 @@
+const { LEAD_STATUSES } = require('../constants/lead-statuses');
+
+const ALLOWED_TRANSITIONS = Object.freeze({
+  [LEAD_STATUSES.NEW]: [LEAD_STATUSES.CONTACTED, LEAD_STATUSES.LOST],
+  [LEAD_STATUSES.CONTACTED]: [
+    LEAD_STATUSES.INTERESTED,
+    LEAD_STATUSES.FOLLOW_UP,
+    LEAD_STATUSES.LOST,
+  ],
+  [LEAD_STATUSES.INTERESTED]: [
+    LEAD_STATUSES.FOLLOW_UP,
+    LEAD_STATUSES.CONVERTED,
+    LEAD_STATUSES.LOST,
+  ],
+  [LEAD_STATUSES.FOLLOW_UP]: [
+    LEAD_STATUSES.CONTACTED,
+    LEAD_STATUSES.INTERESTED,
+    LEAD_STATUSES.CONVERTED,
+    LEAD_STATUSES.LOST,
+  ],
+  [LEAD_STATUSES.CONVERTED]: [],
+  [LEAD_STATUSES.LOST]: [],
+});
+
+function canTransition(from, to) {
+  return from === to || (ALLOWED_TRANSITIONS[from] || []).includes(to);
+}
+
+module.exports = { ALLOWED_TRANSITIONS, canTransition };

@@ -63,4 +63,20 @@ const updateLeadSchema = z.object({
     }),
 });
 
-module.exports = { createLeadSchema, listLeadsSchema, leadIdSchema, updateLeadSchema };
+const changeStatusSchema = z.object({
+  params: idParams,
+  body: z
+    .object({
+      status: z.enum(LEAD_STATUS_VALUES),
+      version: z.number().int().positive(),
+    })
+    .strict(),
+});
+
+module.exports = {
+  createLeadSchema,
+  listLeadsSchema,
+  leadIdSchema,
+  updateLeadSchema,
+  changeStatusSchema,
+};

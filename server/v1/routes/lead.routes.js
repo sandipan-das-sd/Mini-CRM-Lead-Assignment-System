@@ -10,6 +10,7 @@ router.use(authenticate);
 router.post('/', authorize(ROLES.ADMIN), validate(schemas.createLeadSchema), controller.create);
 router.get('/', validate(schemas.listLeadsSchema), controller.list);
 router.get('/:id', validate(schemas.leadIdSchema), controller.get);
+router.patch('/:id/status', validate(schemas.changeStatusSchema), controller.changeStatus);
 router.patch('/:id', validate(schemas.updateLeadSchema), controller.update);
 
 module.exports = router;

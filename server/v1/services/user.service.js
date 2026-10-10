@@ -36,10 +36,10 @@ async function createSalesUser(input) {
 
 async function listUsers(filters) {
   const page = buildPage(await repository.list(filters), filters.limit);
-  return { 
-    ...page, 
-    items: page.items.map(present)
-   };
+  return {
+    ...page,
+    items: page.items.map(present),
+  };
 }
 
 async function getUser(id) {
@@ -50,19 +50,12 @@ async function getUser(id) {
 
 async function updateStatus(id, isActive, actorId) {
   if (id === actorId && !isActive) {
-    throw new AppError(
-      409, 'CANNOT_DEACTIVATE_SELF', 
-      'You cannot deactivate your own account'
-    );
+    throw new AppError(409, 'CANNOT_DEACTIVATE_SELF', 'You cannot deactivate your own account');
   }
   return withTransaction(async (db) => {
     const user = await repository.findById(id, db, { forUpdate: true });
-    if (!user) 
-      throw new AppError(
-      404, 'USER_NOT_FOUND', 'User was not found'
-    );
-    if (Boolean(user.is_active) === isActive) 
-      return present(user);
+    if (!user) throw new AppError(404, 'USER_NOT_FOUND', 'User was not found');
+    if (Boolean(user.is_active) === isActive) return present(user);
 
     if (!isActive) {
       const assignedLeadCount = await repository.countAssignedLeads(id, db);
