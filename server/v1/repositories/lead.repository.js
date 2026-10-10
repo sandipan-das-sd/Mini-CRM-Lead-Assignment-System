@@ -41,7 +41,8 @@ async function findDuplicates({ phone, email, excludeId }, db = pool) {
     contacts.push('email = ?');
     values.push(email);
   }
-  if (!contacts.length) return [];
+  if (!contacts.length) 
+    return [];
   const conditions = [`(${contacts.join(' OR ')})`, 'deleted_at IS NULL'];
   if (excludeId) {
     conditions.push('id <> ?');
@@ -105,7 +106,8 @@ async function list(filters, scope = {}, db = pool) {
 async function update(id, version, changes, actorId, db = pool) {
   const allowed = ['name', 'phone', 'email', 'source'];
   const fields = Object.keys(changes).filter((key) => allowed.includes(key));
-  if (!fields.length) return false;
+  if (!fields.length) 
+    return false;
   const setters = fields.map((field) => `${field} = ?`);
   const values = fields.map((field) => changes[field]);
   const [result] = await db.execute(
