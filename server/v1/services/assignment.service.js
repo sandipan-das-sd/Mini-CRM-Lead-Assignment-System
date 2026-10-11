@@ -9,6 +9,7 @@ const AppError = require('../utils/app-error');
 const { present: presentLead } = require('./lead.service');
 const { invalidateDashboardCache } = require('./dashboard-cache.service');
 const { enqueueAssignmentNotification, enqueueEmail } = require('./job-queue.service');
+const notificationService = require('./notification.service');
 
 async function requireActiveSalesUser(id, db) {
   const user = await userRepository.findActiveById(id, db);
@@ -97,6 +98,13 @@ async function assignLead(leadId, input, actor) {
   });
   await invalidateDashboardCache();
   await enqueueAssignmentNotification(result.notification);
+  await notificationService.createAndSend({
+    userId: result.notification.toUserId,
+    type: 'lead_assigned',
+    title: 'Lead assigned to you',
+    message: `${result.notification.leadName} was assigned to you.`,
+    leadId: result.notification.leadId,
+  });
   return result.lead;
 }
 
@@ -126,11 +134,11 @@ async function createRequest(leadId, input, actor) {
       },
       db,
     );
-    const adminEmails = await userRepository.listActiveAdminEmails(db);
-    return { request, adminEmails, leadName: lead.name };
+    const admins = await userRepository.listActiveAdmins(db);
+    return { request, admins, leadName: lead.name };
   });
   await enqueueEmail({
-    to: result.adminEmails,
+    to: result.admins.map((admin) => admin.email),
     template: 'reassignmentRequested',
     data: {
       requesterName: actor.name,
@@ -138,6 +146,15 @@ async function createRequest(leadId, input, actor) {
       reason: input.reason,
     },
   });
+  await notificationService.createForUsers(
+    result.admins.map((admin) => admin.id),
+    {
+      type: 'reassignment_requested',
+      title: 'New reassignment request',
+      message: `${actor.name} requested reassignment of ${result.leadName}.`,
+      leadId,
+    },
+  );
   return result.request;
 }
 
@@ -191,6 +208,13 @@ async function reviewRequest(id, input, actor) {
   if (result.notification) {
     await invalidateDashboardCache();
     await enqueueAssignmentNotification(result.notification);
+    await notificationService.createAndSend({
+      userId: result.notification.toUserId,
+      type: 'lead_assigned',
+      title: 'Lead assigned to you',
+      message: `${result.notification.leadName} was assigned to you.`,
+      leadId: result.notification.leadId,
+    });
   }
   await enqueueEmail({
     to: result.requester?.email,
@@ -200,6 +224,13 @@ async function reviewRequest(id, input, actor) {
       leadName: result.leadName,
       decision: input.decision,
     },
+  });
+  await notificationService.createAndSend({
+    userId: result.request.requested_by,
+    type: `reassignment_${input.decision}`,
+    title: `Reassignment ${input.decision}`,
+    message: `Your reassignment request for ${result.leadName} was ${input.decision}.`,
+    leadId: result.request.lead_id,
   });
   return result.request;
 }

@@ -14,19 +14,32 @@ export default function LeadsPage() {
   const [leads, setLeads] = useState([]);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
+  const [source, setSource] = useState('');
+  const [assignedUserId, setAssignedUserId] = useState('');
+  const [createdFrom, setCreatedFrom] = useState('');
+  const [createdTo, setCreatedTo] = useState('');
+  const [salesUsers, setSalesUsers] = useState([]);
+  const [nextCursor, setNextCursor] = useState(null);
   const [form, setForm] = useState(blank);
   const [showForm, setShowForm] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
-  async function load() {
+  async function load(cursor = null) {
     setLoading(true);
     setError('');
-    const query = new URLSearchParams({ limit: '100' });
+    const query = new URLSearchParams({ limit: '25' });
     if (search.trim()) query.set('search', search.trim());
     if (status) query.set('status', status);
+    if (source.trim()) query.set('source', source.trim());
+    if (assignedUserId) query.set('assignedUserId', assignedUserId);
+    if (createdFrom) query.set('createdFrom', createdFrom);
+    if (createdTo) query.set('createdTo', `${createdTo}T23:59:59.999Z`);
+    if (cursor) query.set('cursor', cursor);
     try {
-      setLeads((await apiRequest(`/leads?${query}`)).data.leads);
+      const response = await apiRequest(`/leads?${query}`);
+      setLeads((current) => (cursor ? [...current, ...response.data.leads] : response.data.leads));
+      setNextCursor(response.pagination.nextCursor);
     } catch (e) {
       setError(e.message);
     } finally {
@@ -36,6 +49,15 @@ export default function LeadsPage() {
   useEffect(() => {
     load();
   }, [status]);
+  useEffect(() => {
+    if (user.role === 'admin') {
+      apiRequest('/users?limit=100')
+        .then((response) =>
+          setSalesUsers(response.data.users.filter((item) => item.role === 'sales')),
+        )
+        .catch(() => {});
+    }
+  }, [user.role]);
 
   async function createLead(event) {
     event.preventDefault();
@@ -115,8 +137,8 @@ export default function LeadsPage() {
           </div>
         </form>
       )}
-      <div className="panel mb-6 flex flex-col gap-3 sm:flex-row">
-        <div className="relative flex-1">
+      <div className="panel mb-6 grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <div className="relative md:col-span-2">
           <Search className="absolute left-3 top-3.5 text-slate-400" size={17} />
           <input
             className="field pl-10"
@@ -126,18 +148,52 @@ export default function LeadsPage() {
             onKeyDown={(e) => e.key === 'Enter' && load()}
           />
         </div>
-        <select
-          className="field sm:max-w-52"
-          value={status}
-          onChange={(e) => setStatus(e.target.value)}
-        >
+        <select className="field" value={status} onChange={(e) => setStatus(e.target.value)}>
           {statuses.map((s) => (
             <option key={s} value={s}>
               {s ? s.replace('_', ' ') : 'All statuses'}
             </option>
           ))}
         </select>
-        <button className="btn-secondary" onClick={load}>
+        <input
+          className="field"
+          placeholder="Source"
+          value={source}
+          onChange={(e) => setSource(e.target.value)}
+        />
+        {user.role === 'admin' && (
+          <select
+            className="field"
+            value={assignedUserId}
+            onChange={(e) => setAssignedUserId(e.target.value)}
+          >
+            <option value="">All salespeople</option>
+            {salesUsers.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.name}
+              </option>
+            ))}
+          </select>
+        )}
+        <label className="text-xs font-semibold text-slate-500">
+          Created from
+          <input
+            className="field mt-1"
+            type="date"
+            value={createdFrom}
+            onChange={(e) => setCreatedFrom(e.target.value)}
+          />
+        </label>
+        <label className="text-xs font-semibold text-slate-500">
+          Created to
+          <input
+            className="field mt-1"
+            type="date"
+            value={createdTo}
+            onChange={(e) => setCreatedTo(e.target.value)}
+          />
+        </label>
+        <button className="btn-secondary self-end" onClick={() => load()}>
           Search
         </button>
       </div>
@@ -175,6 +231,13 @@ export default function LeadsPage() {
         )}
         {loading && <p className="p-10 text-center text-sm text-slate-500">Loading…</p>}
       </div>
+      {nextCursor && (
+        <div className="mt-5 text-center">
+          <button className="btn-secondary" disabled={loading} onClick={() => load(nextCursor)}>
+            Load more leads
+          </button>
+        </div>
+      )}
     </AppShell>
   );
 }

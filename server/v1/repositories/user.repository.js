@@ -86,6 +86,14 @@ async function listActiveAdminEmails(db = pool) {
   return rows.map((row) => row.email);
 }
 
+async function listActiveAdmins(db = pool) {
+  const [rows] = await db.execute(
+    `SELECT id, name, email FROM users
+     WHERE role = 'admin' AND is_active = TRUE AND deleted_at IS NULL`,
+  );
+  return rows;
+}
+
 module.exports = {
   findAuthUserByEmail,
   findActiveById,
@@ -95,4 +103,5 @@ module.exports = {
   countAssignedLeads,
   setActive,
   listActiveAdminEmails,
+  listActiveAdmins,
 };

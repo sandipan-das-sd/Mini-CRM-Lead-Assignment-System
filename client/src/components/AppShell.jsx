@@ -11,6 +11,7 @@ import {
 import { NavLink } from 'react-router-dom';
 import { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
+import NotificationBell from './NotificationBell';
 
 const links = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -85,7 +86,10 @@ export default function AppShell({ title, eyebrow, actions, children }) {
               <h1 className="font-display text-xl font-bold">{title}</h1>
             </div>
           </div>
-          {actions}
+          <div className="flex items-center gap-2">
+            <NotificationBell />
+            {actions}
+          </div>
         </header>
         <main className="mx-auto max-w-7xl p-4 sm:p-8">{children}</main>
       </div>

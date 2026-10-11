@@ -3,11 +3,15 @@ const env = require('./config/env');
 const pool = require('./db/connection/pool');
 const { closeRedis } = require('./config/redis');
 const { closeJobQueue } = require('./services/job-queue.service');
+const http = require('node:http');
+const { initializeSocket } = require('./realtime/socket');
 
 let server;
 async function start() {
   await pool.query('SELECT 1');
-  server = app.listen(env.PORT, () => console.log(`API listening on http://localhost:${env.PORT}`));
+  server = http.createServer(app);
+  initializeSocket(server);
+  server.listen(env.PORT, () => console.log(`API listening on http://localhost:${env.PORT}`));
 }
 
 async function shutdown(signal) {
