@@ -4,6 +4,7 @@ import { Navigate } from 'react-router-dom';
 import AppShell from '../components/AppShell';
 import { useAuth } from '../hooks/useAuth';
 import { apiRequest } from '../lib/api';
+import { notify } from '../lib/toast';
 import { ErrorBox } from './LeadsPage';
 
 export default function UsersPage() {
@@ -29,9 +30,11 @@ export default function UsersPage() {
       await apiRequest('/users', { method: 'POST', body: JSON.stringify(form) });
       setForm({ name: '', email: '', password: '' });
       setOpen(false);
+      notify('Salesperson created successfully.');
       load();
     } catch (err) {
       setError(err.message);
+      notify(err.message, 'error');
     }
   }
   async function toggle(item) {
@@ -40,9 +43,11 @@ export default function UsersPage() {
         method: 'PATCH',
         body: JSON.stringify({ isActive: !item.isActive }),
       });
+      notify(`${item.name} ${item.isActive ? 'deactivated' : 'activated'}.`);
       load();
     } catch (err) {
       setError(err.message);
+      notify(err.message, 'error');
     }
   }
   return (

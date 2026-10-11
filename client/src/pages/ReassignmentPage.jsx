@@ -3,6 +3,7 @@ import { Navigate } from 'react-router-dom';
 import AppShell from '../components/AppShell';
 import { useAuth } from '../hooks/useAuth';
 import { apiRequest } from '../lib/api';
+import { notify } from '../lib/toast';
 import { ErrorBox } from './LeadsPage';
 
 export default function ReassignmentPage() {
@@ -39,9 +40,11 @@ export default function ReassignmentPage() {
           ...(decision === 'approved' && assignedUserId ? { assignedUserId } : {}),
         }),
       });
+      notify(`Reassignment request ${decision}.`);
       load();
     } catch (e) {
       setError(e.message);
+      notify(e.message, 'error');
     }
   }
   return (

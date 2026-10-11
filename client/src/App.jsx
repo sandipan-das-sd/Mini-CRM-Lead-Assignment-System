@@ -1,5 +1,6 @@
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import ProtectedRoute from './components/ProtectedRoute';
+import ToastViewport from './components/ToastViewport';
 import { AuthProvider } from './context/AuthContext';
 import DashboardPage from './pages/DashboardPage';
 import LeadDetailPage from './pages/LeadDetailPage';
@@ -13,6 +14,7 @@ export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
+        <ToastViewport />
         <Routes>
           <Route path="/login" element={<LoginPage />} />
           <Route

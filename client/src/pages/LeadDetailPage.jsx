@@ -4,6 +4,7 @@ import { Link, useParams } from 'react-router-dom';
 import AppShell from '../components/AppShell';
 import { useAuth } from '../hooks/useAuth';
 import { apiRequest } from '../lib/api';
+import { notify } from '../lib/toast';
 import { ErrorBox } from './LeadsPage';
 
 const statuses = ['new', 'contacted', 'interested', 'follow_up', 'converted', 'lost'];
@@ -55,9 +56,11 @@ export default function LeadDetailPage() {
         body: JSON.stringify({ status: e.target.value, version: lead.version }),
       });
       setLead(result.data.lead);
+      notify('Lead status updated.');
       load();
     } catch (err) {
       setError(err.message);
+      notify(err.message, 'error');
     }
   }
   async function saveLead(e) {
@@ -73,9 +76,11 @@ export default function LeadDetailPage() {
         }),
       });
       setLead(result.data.lead);
+      notify('Lead details saved.');
       await load();
     } catch (err) {
       setError(err.message);
+      notify(err.message, 'error');
     }
   }
   async function assign(e) {
@@ -91,9 +96,11 @@ export default function LeadDetailPage() {
       });
       setTarget('');
       setReason('');
+      notify('Lead assigned successfully.');
       load();
     } catch (err) {
       setError(err.message);
+      notify(err.message, 'error');
     }
   }
   async function requestMove(e) {
@@ -104,9 +111,10 @@ export default function LeadDetailPage() {
         body: JSON.stringify({ reason }),
       });
       setReason('');
-      alert('Reassignment request sent.');
+      notify('Reassignment request sent to an administrator.');
     } catch (err) {
       setError(err.message);
+      notify(err.message, 'error');
     }
   }
   async function addNote(e) {
@@ -117,9 +125,11 @@ export default function LeadDetailPage() {
         body: JSON.stringify({ note }),
       });
       setNote('');
+      notify('Note added.');
       load();
     } catch (err) {
       setError(err.message);
+      notify(err.message, 'error');
     }
   }
   return (
@@ -245,9 +255,7 @@ export default function LeadDetailPage() {
                       {new Date(item.createdAt).toLocaleString()}
                     </time>
                   </div>
-                  <p className="mt-1 text-sm text-slate-600">
-                    {item.message || item.actor?.name || 'System activity'}
-                  </p>
+                  <p className="mt-1 text-sm text-slate-600">{describeActivity(item)}</p>
                 </article>
               ))}
               {!history.length && (
@@ -259,4 +267,22 @@ export default function LeadDetailPage() {
       )}
     </AppShell>
   );
+}
+
+function describeActivity(item) {
+  const actor = item.actor?.name || 'System';
+  const assignment = item.changes?.assignment;
+  if (assignment) {
+    return `${actor} assigned the lead from ${assignment.fromUserName} to ${assignment.toUserName}${item.message ? ` — ${item.message}` : ''}.`;
+  }
+  if (item.type === 'note_added') return `${actor}: ${item.message}`;
+  if (item.type === 'created') return `${actor} created this lead.`;
+  if (item.type === 'status_changed' || item.type === 'converted' || item.type === 'lost') {
+    const status = item.changes?.status;
+    return status
+      ? `${actor} changed status from ${status.from} to ${status.to}.`
+      : `${actor} changed the status.`;
+  }
+  if (item.type === 'updated') return `${actor} updated the lead details.`;
+  return item.message || `${actor} performed this action.`;
 }

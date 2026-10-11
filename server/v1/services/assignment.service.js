@@ -46,7 +46,12 @@ async function applyAssignment(lead, toUserId, actorId, reason, db) {
       type,
       message: reason || null,
       changes: {
-        assignedUserId: { from: lead.assigned_user_id || null, to: toUserId },
+        assignment: {
+          fromUserId: lead.assigned_user_id || null,
+          fromUserName: lead.assigned_user_name || 'Unassigned',
+          toUserId,
+          toUserName: targetUser.name,
+        },
       },
     },
     db,

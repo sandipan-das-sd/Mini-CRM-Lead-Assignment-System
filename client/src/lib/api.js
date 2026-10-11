@@ -14,6 +14,7 @@ export async function apiRequest(path, options = {}) {
   if (!response.ok) {
     const error = new Error(body.error?.message || 'Something went wrong');
     error.code = body.error?.code;
+    error.details = body.error?.details;
     error.status = response.status;
     throw error;
   }

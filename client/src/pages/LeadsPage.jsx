@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import AppShell from '../components/AppShell';
 import { useAuth } from '../hooks/useAuth';
 import { apiRequest } from '../lib/api';
+import { notify } from '../lib/toast';
 
 const blank = { name: '', phone: '', email: '', source: '' };
 const statuses = ['', 'new', 'contacted', 'interested', 'follow_up', 'converted', 'lost'];
@@ -53,9 +54,16 @@ export default function LeadsPage() {
       });
       setForm(blank);
       setShowForm(false);
+      notify('Lead created successfully.');
       await load();
     } catch (e) {
       setError(e.message);
+      notify(
+        e.code === 'DUPLICATE_LEAD' || e.code === 'CONTACT_CONFLICT'
+          ? `Duplicate lead: ${e.message}`
+          : e.message,
+        'error',
+      );
     }
   }
 
