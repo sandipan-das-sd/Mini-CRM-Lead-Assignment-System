@@ -13,34 +13,43 @@ function getQueue() {
       connectTimeout: 500,
       retryStrategy: () => null,
     });
-    notificationQueue = new Queue('notifications', 
-      { connection }
-    );
+    notificationQueue = new Queue('notifications', { connection });
   }
   return notificationQueue;
 }
 
-async function enqueueAssignmentNotification(data) {
+async function enqueueEmail({ to, template, data }) {
   try {
-    await getQueue().add('lead-assigned', data, {
-      attempts: 3,
-      backoff: { type: 'exponential', delay: 1000 },
-      removeOnComplete: 100,
-      removeOnFail: 500,
-    });
+    const recipients = Array.isArray(to) ? to.filter(Boolean) : [to].filter(Boolean);
+    if (!recipients.length) return false;
+    await getQueue().add(
+      'send-email',
+      { to: recipients, template, data },
+      {
+        attempts: 3,
+        backoff: { type: 'exponential', delay: 1000 },
+        removeOnComplete: 100,
+        removeOnFail: 500,
+      },
+    );
     return true;
   } catch (error) {
-    // Assignment is already committed; notification failure must not corrupt CRM state.
-    console.error('Unable to enqueue assignment notification:', error.message);
+    // Business data is already committed; email failure must not corrupt CRM state.
+    console.error('Unable to enqueue email:', error.message);
     return false;
   }
 }
 
+const enqueueAssignmentNotification = (data) =>
+  enqueueEmail({
+    to: data.recipientEmail,
+    template: 'leadAssigned',
+    data,
+  });
+
 async function closeJobQueue() {
-  if (notificationQueue) 
-    await notificationQueue.close();
-  if (connection) 
-    connection.disconnect();
+  if (notificationQueue) await notificationQueue.close();
+  if (connection) connection.disconnect();
 }
 
-module.exports = { enqueueAssignmentNotification, closeJobQueue };
+module.exports = { enqueueEmail, enqueueAssignmentNotification, closeJobQueue };

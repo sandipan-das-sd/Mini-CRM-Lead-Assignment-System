@@ -22,8 +22,7 @@ async function getCachedDashboard(range, actor) {
 async function setCachedDashboard(range, actor, dashboard) {
   try {
     const redis = await getRedis();
-    await redis.set(cacheKey(range, actor),
-     JSON.stringify(dashboard), {
+    await redis.set(cacheKey(range, actor), JSON.stringify(dashboard), {
       EX: env.DASHBOARD_CACHE_TTL_SECONDS,
     });
   } catch (error) {
@@ -36,8 +35,7 @@ async function invalidateDashboardCache() {
     const redis = await getRedis();
     for await (const keys of redis.scanIterator({ MATCH: 'dashboard:*', COUNT: 100 })) {
       const batch = Array.isArray(keys) ? keys : [keys];
-      if (batch.length)
-         await redis.del(batch);
+      if (batch.length) await redis.del(batch);
     }
   } catch (error) {
     console.error('Dashboard cache invalidation failed:', error.message);

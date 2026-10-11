@@ -80,6 +80,16 @@ Redis is deliberately limited to temporary operational data:
 
 Redis is not used for users, leads, assignments, duplicate checks, idempotency, or audit history. Those require MySQL's durable constraints and transactions.
 
+## Transactional email
+
+The BullMQ worker sends responsive HTML and plain-text emails for sales-account creation, lead assignment, reassignment requests, and approval/rejection decisions. Configure `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASSWORD`, `MAIL_FROM`, and `APP_URL`, then run:
+
+```bash
+npm run worker:notifications
+```
+
+When `SMTP_HOST` is empty, the worker uses Nodemailer's JSON transport and logs generated development messages without contacting an external mail server. Welcome emails intentionally never include plaintext passwords.
+
 Access tokens expire after 15 minutes by default. Every protected request also loads the user from MySQL and compares `token_version`. Deactivation (`is_active = false`) therefore blocks access immediately. Incrementing `token_version` revokes all issued tokens for a user.
 
 ## Using role authorization

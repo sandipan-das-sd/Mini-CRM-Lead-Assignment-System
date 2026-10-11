@@ -8,7 +8,7 @@ const { ROLES } = require('../constants/roles');
 const AppError = require('../utils/app-error');
 const { present: presentLead } = require('./lead.service');
 const { invalidateDashboardCache } = require('./dashboard-cache.service');
-const { enqueueAssignmentNotification } = require('./job-queue.service');
+const { enqueueAssignmentNotification, enqueueEmail } = require('./job-queue.service');
 
 async function requireActiveSalesUser(id, db) {
   const user = await userRepository.findActiveById(id, db);
@@ -22,7 +22,7 @@ async function applyAssignment(lead, toUserId, actorId, reason, db) {
   if (Number(lead.assigned_user_id) === Number(toUserId)) {
     throw new AppError(409, 'ALREADY_ASSIGNED', 'The lead is already assigned to this user');
   }
-  await requireActiveSalesUser(toUserId, db);
+  const targetUser = await requireActiveSalesUser(toUserId, db);
   const updated = await leadRepository.assign(lead.id, lead.version, toUserId, actorId, db);
   if (!updated) {
     throw new AppError(409, 'STALE_LEAD_VERSION', 'The lead was changed; reload and retry');
@@ -57,6 +57,9 @@ async function applyAssignment(lead, toUserId, actorId, reason, db) {
     toUserId,
     assignedBy: actorId,
     reason: reason || null,
+    leadName: lead.name,
+    recipientName: targetUser.name,
+    recipientEmail: targetUser.email,
   };
 }
 
@@ -83,8 +86,7 @@ async function assignLead(leadId, input, actor) {
       db,
     );
     return {
-      lead: presentLead(
-        await leadRepository.findById(leadId, {}, db)),
+      lead: presentLead(await leadRepository.findById(leadId, {}, db)),
       notification,
     };
   });
@@ -94,7 +96,7 @@ async function assignLead(leadId, input, actor) {
 }
 
 async function createRequest(leadId, input, actor) {
-  return withTransaction(async (db) => {
+  const result = await withTransaction(async (db) => {
     const lead = await leadRepository.findById(leadId, { assignedUserId: actor.id }, db);
     if (!lead) throw new AppError(404, 'LEAD_NOT_FOUND', 'Lead was not found');
     if (input.requestedToUserId) {
@@ -110,7 +112,7 @@ async function createRequest(leadId, input, actor) {
         'A reassignment request is already pending',
       );
     }
-    return repository.createRequest(
+    const request = await repository.createRequest(
       {
         leadId,
         requestedBy: actor.id,
@@ -119,7 +121,19 @@ async function createRequest(leadId, input, actor) {
       },
       db,
     );
+    const adminEmails = await userRepository.listActiveAdminEmails(db);
+    return { request, adminEmails, leadName: lead.name };
   });
+  await enqueueEmail({
+    to: result.adminEmails,
+    template: 'reassignmentRequested',
+    data: {
+      requesterName: actor.name,
+      leadName: result.leadName,
+      reason: input.reason,
+    },
+  });
+  return result.request;
 }
 
 async function reviewRequest(id, input, actor) {
@@ -132,9 +146,11 @@ async function reviewRequest(id, input, actor) {
     }
 
     let notification = null;
+    let leadName;
     if (input.decision === 'approved') {
       const lead = await leadRepository.findById(request.lead_id, {}, db, { forUpdate: true });
       if (!lead) throw new AppError(404, 'LEAD_NOT_FOUND', 'Lead was not found');
+      leadName = lead.name;
       if (Number(lead.assigned_user_id) !== Number(request.requested_by)) {
         throw new AppError(
           409,
@@ -155,12 +171,31 @@ async function reviewRequest(id, input, actor) {
 
     const reviewed = await repository.reviewRequest(id, input.decision, actor.id, db);
     if (!reviewed) throw new AppError(409, 'REQUEST_ALREADY_REVIEWED', 'Request state changed');
-    return { request: await repository.findRequestById(id, db), notification };
+    const requester = await userRepository.findById(request.requested_by, db);
+    if (!leadName) {
+      const relatedLead = await leadRepository.findById(request.lead_id, {}, db);
+      leadName = relatedLead?.name;
+    }
+    return {
+      request: await repository.findRequestById(id, db),
+      notification,
+      requester,
+      leadName: leadName || `Lead #${request.lead_id}`,
+    };
   });
   if (result.notification) {
     await invalidateDashboardCache();
     await enqueueAssignmentNotification(result.notification);
   }
+  await enqueueEmail({
+    to: result.requester?.email,
+    template: 'reassignmentReviewed',
+    data: {
+      requesterName: result.requester?.name || 'Sales user',
+      leadName: result.leadName,
+      decision: input.decision,
+    },
+  });
   return result.request;
 }
 

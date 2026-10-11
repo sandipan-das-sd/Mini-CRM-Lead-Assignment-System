@@ -12,8 +12,7 @@ client.on('error', (error) => {
 });
 
 async function getRedis() {
-  if (client.isReady)
-     return client;
+  if (client.isReady) return client;
   if (!connectionPromise) {
     connectionPromise = client.connect().catch((error) => {
       connectionPromise = undefined;

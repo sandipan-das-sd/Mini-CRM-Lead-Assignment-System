@@ -5,10 +5,11 @@ const { getCachedDashboard, setCachedDashboard } = require('./dashboard-cache.se
 
 async function getDashboard(range, actor) {
   const cached = await getCachedDashboard(range, actor);
-  if (cached) 
+  if (cached)
     return {
-   ...cached, cache: 'hit'
-   };
+      ...cached,
+      cache: 'hit',
+    };
 
   const scope = accessScope(actor);
   const [statusRows, salespersonRows] = await Promise.all([
@@ -30,10 +31,10 @@ async function getDashboard(range, actor) {
     })),
   };
   await setCachedDashboard(range, actor, dashboard);
-  return { 
+  return {
     ...dashboard,
-     cache: 'miss'
-     };
+    cache: 'miss',
+  };
 }
 
 module.exports = { getDashboard };

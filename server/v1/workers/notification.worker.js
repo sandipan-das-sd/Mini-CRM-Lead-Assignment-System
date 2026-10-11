@@ -1,16 +1,17 @@
 const { Worker } = require('bullmq');
 const IORedis = require('ioredis');
 const env = require('../config/env');
+const { sendTemplateEmail } = require('../services/email.service');
 
 const connection = new IORedis(env.REDIS_URL, { maxRetriesPerRequest: null });
 
 const worker = new Worker(
   'notifications',
   async (job) => {
-    if (job.name === 'lead-assigned') {
-      // Replace this log with an email/SMS provider without slowing the API request.
-      console.log('Assignment notification processed', job.data);
-    }
+    if (job.name !== 'send-email') 
+      throw new Error(`Unsupported job: ${job.name}`);
+    await sendTemplateEmail(job.data);
+    console.log(`Email job ${job.id} sent using ${job.data.template}`);
   },
   { connection, concurrency: 5 },
 );

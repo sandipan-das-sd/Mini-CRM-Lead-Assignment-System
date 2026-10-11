@@ -4,6 +4,7 @@ const { buildPage } = require('../utils/pagination');
 const { withTransaction } = require('../db/transaction');
 const { ROLES } = require('../constants/roles');
 const AppError = require('../utils/app-error');
+const { enqueueEmail } = require('./job-queue.service');
 
 function present(user) {
   return {
@@ -25,7 +26,13 @@ async function createSalesUser(input) {
       passwordHash: await hashPassword(input.password),
       role: ROLES.SALES,
     });
-    return present(user);
+    const response = present(user);
+    await enqueueEmail({
+      to: user.email,
+      template: 'welcome',
+      data: { name: user.name, email: user.email },
+    });
+    return response;
   } catch (error) {
     if (error.code === 'ER_DUP_ENTRY') {
       throw new AppError(409, 'EMAIL_ALREADY_EXISTS', 'A user with this email already exists');
