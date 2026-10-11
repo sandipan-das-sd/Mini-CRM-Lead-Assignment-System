@@ -9,8 +9,8 @@ import {
   Users,
 } from 'lucide-react';
 import AppShell from '../components/AppShell';
-import { apiRequest } from '../lib/api';
 import { useAuth } from '../hooks/useAuth';
+import { useApiCache } from '../hooks/useApiCache';
 
 const STATUS_LABELS = {
   new: 'New',
@@ -31,6 +31,7 @@ const STATUS_COLORS = {
 
 export default function DashboardPage() {
   const { user, logout } = useAuth();
+  const { get: getCached } = useApiCache();
   const [dashboard, setDashboard] = useState(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -39,7 +40,7 @@ export default function DashboardPage() {
     setLoading(true);
     setError('');
     try {
-      const response = await apiRequest('/dashboard');
+      const response = await getCached('/dashboard', { force: true });
       setDashboard(response.data);
     } catch (requestError) {
       if (requestError.status === 401) logout();
@@ -47,17 +48,17 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, [logout]);
+  }, [getCached, logout]);
 
   useEffect(() => {
-    apiRequest('/dashboard')
+    getCached('/dashboard')
       .then((response) => setDashboard(response.data))
       .catch((requestError) => {
         if (requestError.status === 401) logout();
         else setError(requestError.message);
       })
       .finally(() => setLoading(false));
-  }, [logout]);
+  }, [getCached, logout]);
 
   return (
     <AppShell

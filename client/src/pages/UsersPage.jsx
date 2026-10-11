@@ -3,19 +3,21 @@ import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import AppShell from '../components/AppShell';
 import { useAuth } from '../hooks/useAuth';
+import { useApiCache } from '../hooks/useApiCache';
 import { apiRequest } from '../lib/api';
 import { notify } from '../lib/toast';
 import { ErrorBox } from './LeadsPage';
 
 export default function UsersPage() {
   const { user: actor } = useAuth();
+  const { get: getCached, invalidate } = useApiCache();
   const [users, setUsers] = useState([]);
   const [error, setError] = useState('');
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ name: '', email: '', password: '' });
   async function load() {
     try {
-      setUsers((await apiRequest('/users?limit=100')).data.users);
+      setUsers((await getCached('/users?limit=100')).data.users);
     } catch (e) {
       setError(e.message);
     }
@@ -28,6 +30,7 @@ export default function UsersPage() {
     e.preventDefault();
     try {
       await apiRequest('/users', { method: 'POST', body: JSON.stringify(form) });
+      invalidate('/users');
       setForm({ name: '', email: '', password: '' });
       setOpen(false);
       notify('Salesperson created successfully.');
@@ -43,6 +46,7 @@ export default function UsersPage() {
         method: 'PATCH',
         body: JSON.stringify({ isActive: !item.isActive }),
       });
+      invalidate('/users');
       notify(`${item.name} ${item.isActive ? 'deactivated' : 'activated'}.`);
       load();
     } catch (err) {

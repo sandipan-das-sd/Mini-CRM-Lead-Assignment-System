@@ -1,0 +1,10 @@
+{
+  "name": "LeadFlow CRM",
+  "short_name": "LeadFlow",
+  "description": "Secure lead management and assignment system.",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#f6f7f9",
+  "theme_color": "#111827",
+  "icons": [{ "src": "/favicon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }]
+}

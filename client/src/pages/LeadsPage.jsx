@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import AppShell from '../components/AppShell';
 import { useAuth } from '../hooks/useAuth';
+import { useApiCache } from '../hooks/useApiCache';
 import { apiRequest } from '../lib/api';
 import { notify } from '../lib/toast';
 
@@ -11,6 +12,7 @@ const statuses = ['', 'new', 'contacted', 'interested', 'follow_up', 'converted'
 
 export default function LeadsPage() {
   const { user } = useAuth();
+  const { get: getCached, invalidate } = useApiCache();
   const [leads, setLeads] = useState([]);
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
@@ -37,7 +39,7 @@ export default function LeadsPage() {
     if (createdTo) query.set('createdTo', `${createdTo}T23:59:59.999Z`);
     if (cursor) query.set('cursor', cursor);
     try {
-      const response = await apiRequest(`/leads?${query}`);
+      const response = await getCached(`/leads?${query}`);
       setLeads((current) => (cursor ? [...current, ...response.data.leads] : response.data.leads));
       setNextCursor(response.pagination.nextCursor);
     } catch (e) {
@@ -51,7 +53,7 @@ export default function LeadsPage() {
   }, [status]);
   useEffect(() => {
     if (user.role === 'admin') {
-      apiRequest('/users?limit=100')
+      getCached('/users?limit=100')
         .then((response) =>
           setSalesUsers(response.data.users.filter((item) => item.role === 'sales')),
         )
@@ -74,6 +76,8 @@ export default function LeadsPage() {
         headers: { 'Idempotency-Key': crypto.randomUUID() },
         body: JSON.stringify(body),
       });
+      invalidate('/leads');
+      invalidate('/dashboard');
       setForm(blank);
       setShowForm(false);
       notify('Lead created successfully.');

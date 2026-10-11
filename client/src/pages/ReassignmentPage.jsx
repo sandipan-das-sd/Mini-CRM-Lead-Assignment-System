@@ -2,12 +2,14 @@ import { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import AppShell from '../components/AppShell';
 import { useAuth } from '../hooks/useAuth';
+import { useApiCache } from '../hooks/useApiCache';
 import { apiRequest } from '../lib/api';
 import { notify } from '../lib/toast';
 import { ErrorBox } from './LeadsPage';
 
 export default function ReassignmentPage() {
   const { user } = useAuth();
+  const { get: getCached, invalidate } = useApiCache();
   const [requests, setRequests] = useState([]);
   const [sales, setSales] = useState([]);
   const [targets, setTargets] = useState({});
@@ -15,8 +17,8 @@ export default function ReassignmentPage() {
   async function load() {
     try {
       const [a, b] = await Promise.all([
-        apiRequest('/reassignment-requests?limit=100'),
-        apiRequest('/users?limit=100'),
+        getCached('/reassignment-requests?limit=100'),
+        getCached('/users?limit=100'),
       ]);
       setRequests(a.data.requests);
       setSales(
@@ -40,6 +42,9 @@ export default function ReassignmentPage() {
           ...(decision === 'approved' && assignedUserId ? { assignedUserId } : {}),
         }),
       });
+      invalidate('/reassignment-requests');
+      invalidate('/leads');
+      invalidate('/dashboard');
       notify(`Reassignment request ${decision}.`);
       load();
     } catch (e) {

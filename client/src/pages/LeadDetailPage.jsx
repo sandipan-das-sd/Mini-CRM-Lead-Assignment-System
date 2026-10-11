@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import AppShell from '../components/AppShell';
 import { useAuth } from '../hooks/useAuth';
+import { useApiCache } from '../hooks/useApiCache';
 import { apiRequest } from '../lib/api';
 import { notify } from '../lib/toast';
 import { ErrorBox } from './LeadsPage';
@@ -11,6 +12,7 @@ const statuses = ['new', 'contacted', 'interested', 'follow_up', 'converted', 'l
 export default function LeadDetailPage() {
   const { id } = useParams();
   const { user } = useAuth();
+  const { get: getCached, invalidate } = useApiCache();
   const [lead, setLead] = useState(null);
   const [history, setHistory] = useState([]);
   const [users, setUsers] = useState([]);
@@ -19,12 +21,17 @@ export default function LeadDetailPage() {
   const [reason, setReason] = useState('');
   const [target, setTarget] = useState('');
   const [edit, setEdit] = useState(null);
+  function invalidateLeadData() {
+    invalidate(`/leads/${id}`);
+    invalidate('/leads?');
+    invalidate('/dashboard');
+  }
   async function load() {
     setError('');
     try {
       const [leadRes, historyRes] = await Promise.all([
-        apiRequest(`/leads/${id}`),
-        apiRequest(`/leads/${id}/activities?limit=100`),
+        getCached(`/leads/${id}`),
+        getCached(`/leads/${id}/activities?limit=100`),
       ]);
       setLead(leadRes.data.lead);
       setEdit({
@@ -35,7 +42,7 @@ export default function LeadDetailPage() {
       });
       setHistory(historyRes.data.activities);
       if (user.role === 'admin') {
-        const userResponse = await apiRequest('/users?limit=100');
+        const userResponse = await getCached('/users?limit=100');
         setUsers(
           userResponse.data.users.filter(
             (candidate) => candidate.role === 'sales' && candidate.isActive,
@@ -55,6 +62,7 @@ export default function LeadDetailPage() {
         method: 'PATCH',
         body: JSON.stringify({ status: e.target.value, version: lead.version }),
       });
+      invalidateLeadData();
       setLead(result.data.lead);
       notify('Lead status updated.');
       load();
@@ -75,6 +83,7 @@ export default function LeadDetailPage() {
           version: lead.version,
         }),
       });
+      invalidateLeadData();
       setLead(result.data.lead);
       notify('Lead details saved.');
       await load();
@@ -94,6 +103,7 @@ export default function LeadDetailPage() {
           reason: reason || undefined,
         }),
       });
+      invalidateLeadData();
       setTarget('');
       setReason('');
       notify('Lead assigned successfully.');
@@ -110,6 +120,7 @@ export default function LeadDetailPage() {
         method: 'POST',
         body: JSON.stringify({ reason }),
       });
+      invalidate('/reassignment-requests');
       setReason('');
       notify('Reassignment request sent to an administrator.');
     } catch (err) {
@@ -124,6 +135,7 @@ export default function LeadDetailPage() {
         method: 'POST',
         body: JSON.stringify({ note }),
       });
+      invalidate(`/leads/${id}/activities`);
       setNote('');
       notify('Note added.');
       load();
