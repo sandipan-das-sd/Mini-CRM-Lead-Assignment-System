@@ -4,8 +4,8 @@ async function addNote(req, res, next) {
   try {
     const activity = await service.addNote(req.params.leadId, req.body.note, req.user);
     return res.status(201).json({
-       data: { activity }
-       });
+      data: { activity },
+    });
   } catch (error) {
     return next(error);
   }
@@ -14,10 +14,10 @@ async function addNote(req, res, next) {
 async function listHistory(req, res, next) {
   try {
     const result = await service.listHistory(req.params.leadId, req.query, req.user);
-    return res.json({ 
-      data: { activities: result.items }, 
-      pagination: result.pagination
-     });
+    return res.json({
+      data: { activities: result.items },
+      pagination: result.pagination,
+    });
   } catch (error) {
     return next(error);
   }

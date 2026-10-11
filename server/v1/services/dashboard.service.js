@@ -1,8 +1,15 @@
 const repository = require('../repositories/dashboard.repository');
 const { accessScope } = require('../policies/lead-access.policy');
 const { LEAD_STATUS_VALUES } = require('../constants/lead-statuses');
+const { getCachedDashboard, setCachedDashboard } = require('./dashboard-cache.service');
 
 async function getDashboard(range, actor) {
+  const cached = await getCachedDashboard(range, actor);
+  if (cached) 
+    return {
+   ...cached, cache: 'hit'
+   };
+
   const scope = accessScope(actor);
   const [statusRows, salespersonRows] = await Promise.all([
     repository.countByStatus(scope, range),
@@ -10,7 +17,7 @@ async function getDashboard(range, actor) {
   ]);
   const byStatus = Object.fromEntries(LEAD_STATUS_VALUES.map((status) => [status, 0]));
   for (const row of statusRows) byStatus[row.status] = Number(row.count);
-  return {
+  const dashboard = {
     totalLeads: Object.values(byStatus).reduce((total, count) => total + count, 0),
     newLeads: byStatus.new,
     convertedLeads: byStatus.converted,
@@ -22,6 +29,11 @@ async function getDashboard(range, actor) {
       count: Number(row.count),
     })),
   };
+  await setCachedDashboard(range, actor, dashboard);
+  return { 
+    ...dashboard,
+     cache: 'miss'
+     };
 }
 
 module.exports = { getDashboard };

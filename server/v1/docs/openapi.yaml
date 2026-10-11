@@ -41,6 +41,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/LoginResponse'
         '401': { $ref: '#/components/responses/Unauthorized' }
+        '429': { $ref: '#/components/responses/RateLimited' }
         '422': { $ref: '#/components/responses/ValidationError' }
   /auth/me:
     get:
@@ -426,6 +427,14 @@ components:
           schema: { $ref: '#/components/schemas/Error' }
     ValidationError:
       description: Request validation or business-rule failure
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+    RateLimited:
+      description: Too many login attempts; retry after the number of seconds in Retry-After
+      headers:
+        Retry-After:
+          schema: { type: integer }
       content:
         application/json:
           schema: { $ref: '#/components/schemas/Error' }

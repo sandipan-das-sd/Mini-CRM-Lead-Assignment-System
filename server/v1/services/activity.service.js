@@ -20,9 +20,7 @@ function present(activity) {
 
 async function ensureLeadAccess(leadId, actor, db) {
   const lead = await leadRepository.findById(leadId, accessScope(actor), db);
-  if (!lead) 
-    throw new AppError(
-  );
+  if (!lead) throw new AppError();
   return lead;
 }
 
@@ -35,23 +33,20 @@ async function addNote(leadId, note, actor) {
     message: note,
   });
   return {
-     id,
-      leadId,
-       type: 'note_added',
-        message: note 
-    };
+    id,
+    leadId,
+    type: 'note_added',
+    message: note,
+  };
 }
 
 async function listHistory(leadId, filters, actor) {
   await ensureLeadAccess(leadId, actor);
-  const page = buildPage(
-    await activityRepository.listByLead(leadId, filters), 
-    filters.limit
-  );
+  const page = buildPage(await activityRepository.listByLead(leadId, filters), filters.limit);
   return {
-     ...page,
-      items: page.items.map(present)
-     };
+    ...page,
+    items: page.items.map(present),
+  };
 }
 
 module.exports = { addNote, listHistory };

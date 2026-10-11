@@ -7,6 +7,7 @@ const { buildPage } = require('../utils/pagination');
 const { accessScope, canUpdateLead } = require('../policies/lead-access.policy');
 const { canTransition } = require('../policies/lead-status.policy');
 const AppError = require('../utils/app-error');
+const { invalidateDashboardCache } = require('./dashboard-cache.service');
 
 function present(lead) {
   return {
@@ -61,7 +62,7 @@ function duplicateError(matches, phone, email) {
 async function createLead(input, actor, idempotencyKey) {
   const normalized = normalizeInput(input);
   try {
-    return await withTransaction(async (db) => {
+    const result = await withTransaction(async (db) => {
       const state = await idempotency.reserve(
         {
           userId: actor.id,
@@ -112,6 +113,8 @@ async function createLead(input, actor, idempotencyKey) {
       );
       return { statusCode: 201, body };
     });
+    await invalidateDashboardCache();
+    return result;
   } catch (error) {
     if (error.code === 'ER_DUP_ENTRY') {
       throw new AppError(
@@ -142,7 +145,7 @@ async function updateLead(id, input, actor) {
   const { version, ...requestedChanges } = input;
   const normalizedChanges = normalizeInput(requestedChanges);
   try {
-    return await withTransaction(async (db) => {
+    const result = await withTransaction(async (db) => {
       const lead = await leadRepository.findById(id, accessScope(actor), db);
       if (!lead || !canUpdateLead(actor, lead)) {
         throw new AppError(404, 'LEAD_NOT_FOUND', 'Lead was not found');
@@ -189,6 +192,8 @@ async function updateLead(id, input, actor) {
       );
       return present(await leadRepository.findById(id, accessScope(actor), db));
     });
+    await invalidateDashboardCache();
+    return result;
   } catch (error) {
     if (error.code === 'ER_DUP_ENTRY') {
       throw new AppError(409, 'DUPLICATE_LEAD', 'A lead with this phone or email already exists');
@@ -198,7 +203,7 @@ async function updateLead(id, input, actor) {
 }
 
 async function changeStatus(id, input, actor) {
-  return withTransaction(async (db) => {
+  const result = await withTransaction(async (db) => {
     const lead = await leadRepository.findById(id, accessScope(actor), db, { forUpdate: true });
     if (!lead) throw new AppError(404, 'LEAD_NOT_FOUND', 'Lead was not found');
     if (Number(lead.version) !== input.version) {
@@ -232,6 +237,8 @@ async function changeStatus(id, input, actor) {
     );
     return present(await leadRepository.findById(id, accessScope(actor), db));
   });
+  await invalidateDashboardCache();
+  return result;
 }
 
 module.exports = { createLead, listLeads, getLead, updateLead, changeStatus, present };

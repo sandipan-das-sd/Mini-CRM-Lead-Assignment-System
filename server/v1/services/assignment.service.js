@@ -7,6 +7,8 @@ const { buildPage } = require('../utils/pagination');
 const { ROLES } = require('../constants/roles');
 const AppError = require('../utils/app-error');
 const { present: presentLead } = require('./lead.service');
+const { invalidateDashboardCache } = require('./dashboard-cache.service');
+const { enqueueAssignmentNotification } = require('./job-queue.service');
 
 async function requireActiveSalesUser(id, db) {
   const user = await userRepository.findActiveById(id, db);
@@ -18,16 +20,12 @@ async function requireActiveSalesUser(id, db) {
 
 async function applyAssignment(lead, toUserId, actorId, reason, db) {
   if (Number(lead.assigned_user_id) === Number(toUserId)) {
-    throw new AppError(
-      409, 'ALREADY_ASSIGNED', 
-      'The lead is already assigned to this user');
+    throw new AppError(409, 'ALREADY_ASSIGNED', 'The lead is already assigned to this user');
   }
   await requireActiveSalesUser(toUserId, db);
   const updated = await leadRepository.assign(lead.id, lead.version, toUserId, actorId, db);
   if (!updated) {
-    throw new AppError(
-      409, 'STALE_LEAD_VERSION', 
-      'The lead was changed; reload and retry');
+    throw new AppError(409, 'STALE_LEAD_VERSION', 'The lead was changed; reload and retry');
   }
   await repository.closeCurrent(lead.id, db);
   await repository.createAssignment(
@@ -53,34 +51,52 @@ async function applyAssignment(lead, toUserId, actorId, reason, db) {
     },
     db,
   );
+  return {
+    leadId: lead.id,
+    fromUserId: lead.assigned_user_id || null,
+    toUserId,
+    assignedBy: actorId,
+    reason: reason || null,
+  };
 }
 
 async function assignLead(leadId, input, actor) {
-  return withTransaction(async (db) => {
-    const lead = await leadRepository.findById(leadId, {}, db, 
+  const result = await withTransaction(async (db) => {
+    const lead = await leadRepository.findById(
+      leadId,
+      {},
+      db,
       //Lock this lead until the current transaction commits or rolls back.
-      { 
-        forUpdate: true 
-      });
-    if (!lead) throw new AppError(
-      404, 'LEAD_NOT_FOUND', 'Lead was not found'
+      {
+        forUpdate: true,
+      },
     );
+    if (!lead) throw new AppError(404, 'LEAD_NOT_FOUND', 'Lead was not found');
     if (Number(lead.version) !== input.version) {
       throw new AppError(409, 'STALE_LEAD_VERSION', 'The lead was changed; reload and retry');
     }
-    await applyAssignment(
-      lead, input.assignedUserId, actor.id, input.reason, db
+    const notification = await applyAssignment(
+      lead,
+      input.assignedUserId,
+      actor.id,
+      input.reason,
+      db,
     );
-    return presentLead(await leadRepository.findById(leadId, {}, db));
+    return {
+      lead: presentLead(
+        await leadRepository.findById(leadId, {}, db)),
+      notification,
+    };
   });
+  await invalidateDashboardCache();
+  await enqueueAssignmentNotification(result.notification);
+  return result.lead;
 }
 
 async function createRequest(leadId, input, actor) {
   return withTransaction(async (db) => {
     const lead = await leadRepository.findById(leadId, { assignedUserId: actor.id }, db);
-    if (!lead) throw new AppError(
-      404, 'LEAD_NOT_FOUND', 'Lead was not found'
-    );
+    if (!lead) throw new AppError(404, 'LEAD_NOT_FOUND', 'Lead was not found');
     if (input.requestedToUserId) {
       if (Number(input.requestedToUserId) === Number(actor.id)) {
         throw new AppError(422, 'INVALID_ASSIGNEE', 'Choose a different sales user');
@@ -107,7 +123,7 @@ async function createRequest(leadId, input, actor) {
 }
 
 async function reviewRequest(id, input, actor) {
-  return withTransaction(async (db) => {
+  const result = await withTransaction(async (db) => {
     const request = await repository.findRequestById(id, db, { forUpdate: true });
     if (!request)
       throw new AppError(404, 'REQUEST_NOT_FOUND', 'Reassignment request was not found');
@@ -115,6 +131,7 @@ async function reviewRequest(id, input, actor) {
       throw new AppError(409, 'REQUEST_ALREADY_REVIEWED', 'This request has already been reviewed');
     }
 
+    let notification = null;
     if (input.decision === 'approved') {
       const lead = await leadRepository.findById(request.lead_id, {}, db, { forUpdate: true });
       if (!lead) throw new AppError(404, 'LEAD_NOT_FOUND', 'Lead was not found');
@@ -133,13 +150,18 @@ async function reviewRequest(id, input, actor) {
           'An assignee is required to approve this request',
         );
       }
-      await applyAssignment(lead, targetId, actor.id, request.reason, db);
+      notification = await applyAssignment(lead, targetId, actor.id, request.reason, db);
     }
 
     const reviewed = await repository.reviewRequest(id, input.decision, actor.id, db);
     if (!reviewed) throw new AppError(409, 'REQUEST_ALREADY_REVIEWED', 'Request state changed');
-    return repository.findRequestById(id, db);
+    return { request: await repository.findRequestById(id, db), notification };
   });
+  if (result.notification) {
+    await invalidateDashboardCache();
+    await enqueueAssignmentNotification(result.notification);
+  }
+  return result.request;
 }
 
 async function listRequests(filters) {

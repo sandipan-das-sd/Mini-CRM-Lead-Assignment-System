@@ -15,6 +15,13 @@ npm run db:seed
 npm start
 ```
 
+Start both infrastructure services and the notification worker when Redis features are enabled:
+
+```bash
+docker compose up -d mysql redis
+npm run worker:notifications
+```
+
 Change `JWT_SECRET`, `ADMIN_PASSWORD`, and database passwords before any deployment. The API base URL is `http://localhost:4000/api/v1`.
 
 ## Authentication API
@@ -62,6 +69,16 @@ Content-Type: application/json
 ```
 
 Lead updates use optimistic concurrency. If two clients read version `1`, only the first update succeeds and changes the version to `2`; the second receives `409 STALE_LEAD_VERSION` and must reload before retrying.
+
+## Redis responsibilities
+
+Redis is deliberately limited to temporary operational data:
+
+- `POST /auth/login` uses an atomic fixed-window counter per IP (10 attempts per 60 seconds by default). It returns HTTP 429 and `Retry-After` when exceeded. If Redis is unavailable, it fails open so an infrastructure outage does not lock everyone out.
+- `GET /dashboard` caches each role/user/date-range result for 60 seconds. Lead creation, update, status change, and assignment invalidate dashboard keys. Cache failures fall back to MySQL.
+- Successful assignments enqueue a BullMQ `lead-assigned` notification only after the MySQL transaction commits. Run `npm run worker:notifications` to consume it. Jobs retry three times with exponential backoff. The worker currently logs the notification payload; an email/SMS provider can replace that handler.
+
+Redis is not used for users, leads, assignments, duplicate checks, idempotency, or audit history. Those require MySQL's durable constraints and transactions.
 
 Access tokens expire after 15 minutes by default. Every protected request also loads the user from MySQL and compares `token_version`. Deactivation (`is_active = false`) therefore blocks access immediately. Incrementing `token_version` revokes all issued tokens for a user.
 
