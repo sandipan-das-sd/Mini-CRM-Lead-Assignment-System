@@ -15,10 +15,12 @@ export default function ReassignmentPage() {
     try {
       const [a, b] = await Promise.all([
         apiRequest('/reassignment-requests?limit=100'),
-        apiRequest('/users?role=sales&isActive=true&limit=100'),
+        apiRequest('/users?limit=100'),
       ]);
       setRequests(a.data.requests);
-      setSales(b.data.users);
+      setSales(
+        b.data.users.filter((candidate) => candidate.role === 'sales' && candidate.isActive),
+      );
     } catch (e) {
       setError(e.message);
     }

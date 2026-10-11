@@ -33,8 +33,14 @@ export default function LeadDetailPage() {
         source: leadRes.data.lead.source,
       });
       setHistory(historyRes.data.activities);
-      if (user.role === 'admin')
-        setUsers((await apiRequest('/users?role=sales&isActive=true&limit=100')).data.users);
+      if (user.role === 'admin') {
+        const userResponse = await apiRequest('/users?limit=100');
+        setUsers(
+          userResponse.data.users.filter(
+            (candidate) => candidate.role === 'sales' && candidate.isActive,
+          ),
+        );
+      }
     } catch (e) {
       setError(e.message);
     }
