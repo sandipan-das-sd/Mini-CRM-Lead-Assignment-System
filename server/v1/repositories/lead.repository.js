@@ -10,7 +10,14 @@ async function create(input, db = pool) {
   const [result] = await db.execute(
     `INSERT INTO leads (name, phone, email, source, created_by, updated_by)
      VALUES (?, ?, ?, ?, ?, ?)`,
-    [input.name, input.phone, input.email, input.source, input.actorId, input.actorId],
+    [
+      input.name,
+      input.phone ?? null,
+      input.email ?? null,
+      input.source,
+      input.actorId,
+      input.actorId,
+    ],
   );
   return findById(result.insertId, {}, db);
 }

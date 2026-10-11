@@ -1,5 +1,7 @@
 const pool = require('../../db/connection/pool');
 const { hashPassword } = require('../../utils/password');
+const { closeRedis } = require('../../config/redis');
+const { closeJobQueue } = require('../../services/job-queue.service');
 
 async function resetDatabase() {
   await pool.query('SET FOREIGN_KEY_CHECKS = 0');
@@ -31,4 +33,10 @@ async function count(table) {
   return Number(rows[0].total);
 }
 
-module.exports = { pool, resetDatabase, createUser, count };
+async function closeTestConnections() {
+  await closeJobQueue();
+  await closeRedis();
+  await pool.end();
+}
+
+module.exports = { pool, resetDatabase, createUser, count, closeTestConnections };

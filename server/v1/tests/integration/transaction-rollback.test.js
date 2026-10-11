@@ -1,10 +1,10 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { withTransaction } = require('../../db/transaction');
-const { pool, resetDatabase, createUser, count } = require('../helpers/test-db');
+const { resetDatabase, createUser, count, closeTestConnections } = require('../helpers/test-db');
 
 test.before(resetDatabase);
-test.after(() => pool.end());
+test.after(closeTestConnections);
 
 test('a failed multi-write transaction leaves no partial lead', async () => {
   const admin = await createUser({ name: 'Admin', email: 'admin@test.local', role: 'admin' });

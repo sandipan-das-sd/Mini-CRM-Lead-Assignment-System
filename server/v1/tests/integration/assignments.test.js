@@ -2,14 +2,10 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const leadService = require('../../services/lead.service');
 const assignmentService = require('../../services/assignment.service');
-const { pool, resetDatabase, createUser } = require('../helpers/test-db');
-const { closeJobQueue } = require('../../services/job-queue.service');
+const { pool, resetDatabase, createUser, closeTestConnections } = require('../helpers/test-db');
 
 test.before(resetDatabase);
-test.after(async () => {
-  await closeJobQueue();
-  await pool.end();
-});
+test.after(closeTestConnections);
 
 test('assignment and approved reassignment preserve ownership history', async () => {
   const admin = await createUser({ name: 'Admin', email: 'admin@test.local', role: 'admin' });
