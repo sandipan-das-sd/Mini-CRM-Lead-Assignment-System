@@ -94,7 +94,7 @@ deploy/nginx/            Production virtual hosts
 Requirements: Node.js 20+, Docker Engine with Compose.
 
 ```bash
-git clone YOUR_REPOSITORY_URL
+git clone https://github.com/sandipan-das-sd/Mini-CRM-Lead-Assignment-System.git
 cd Mini-CRM-Lead-Assignment-System/server/v1
 cp .env.example .env
 docker compose up -d mysql redis
