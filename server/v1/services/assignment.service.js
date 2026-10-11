@@ -18,12 +18,16 @@ async function requireActiveSalesUser(id, db) {
 
 async function applyAssignment(lead, toUserId, actorId, reason, db) {
   if (Number(lead.assigned_user_id) === Number(toUserId)) {
-    throw new AppError(409, 'ALREADY_ASSIGNED', 'The lead is already assigned to this user');
+    throw new AppError(
+      409, 'ALREADY_ASSIGNED', 
+      'The lead is already assigned to this user');
   }
   await requireActiveSalesUser(toUserId, db);
   const updated = await leadRepository.assign(lead.id, lead.version, toUserId, actorId, db);
   if (!updated) {
-    throw new AppError(409, 'STALE_LEAD_VERSION', 'The lead was changed; reload and retry');
+    throw new AppError(
+      409, 'STALE_LEAD_VERSION', 
+      'The lead was changed; reload and retry');
   }
   await repository.closeCurrent(lead.id, db);
   await repository.createAssignment(
@@ -53,12 +57,20 @@ async function applyAssignment(lead, toUserId, actorId, reason, db) {
 
 async function assignLead(leadId, input, actor) {
   return withTransaction(async (db) => {
-    const lead = await leadRepository.findById(leadId, {}, db, { forUpdate: true });
-    if (!lead) throw new AppError(404, 'LEAD_NOT_FOUND', 'Lead was not found');
+    const lead = await leadRepository.findById(leadId, {}, db, 
+      //Lock this lead until the current transaction commits or rolls back.
+      { 
+        forUpdate: true 
+      });
+    if (!lead) throw new AppError(
+      404, 'LEAD_NOT_FOUND', 'Lead was not found'
+    );
     if (Number(lead.version) !== input.version) {
       throw new AppError(409, 'STALE_LEAD_VERSION', 'The lead was changed; reload and retry');
     }
-    await applyAssignment(lead, input.assignedUserId, actor.id, input.reason, db);
+    await applyAssignment(
+      lead, input.assignedUserId, actor.id, input.reason, db
+    );
     return presentLead(await leadRepository.findById(leadId, {}, db));
   });
 }
@@ -66,7 +78,9 @@ async function assignLead(leadId, input, actor) {
 async function createRequest(leadId, input, actor) {
   return withTransaction(async (db) => {
     const lead = await leadRepository.findById(leadId, { assignedUserId: actor.id }, db);
-    if (!lead) throw new AppError(404, 'LEAD_NOT_FOUND', 'Lead was not found');
+    if (!lead) throw new AppError(
+      404, 'LEAD_NOT_FOUND', 'Lead was not found'
+    );
     if (input.requestedToUserId) {
       if (Number(input.requestedToUserId) === Number(actor.id)) {
         throw new AppError(422, 'INVALID_ASSIGNEE', 'Choose a different sales user');
