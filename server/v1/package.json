@@ -12,6 +12,7 @@
     "start": "node server.js",
     "db:migrate": "node scripts/migrate.js",
     "db:seed": "node scripts/seed.js",
+    "db:seed:demo": "node scripts/seed-demo.js",
     "worker:notifications": "node workers/notification.worker.js",
     "test": "node --test --test-concurrency=1 tests/unit/*.test.js tests/integration/auth.test.js tests/integration/authorization.test.js",
     "test:db": "node --test --test-concurrency=1 tests/integration/*.test.js",
