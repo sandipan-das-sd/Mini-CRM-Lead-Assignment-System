@@ -13,7 +13,10 @@
     "db:migrate": "node scripts/migrate.js",
     "db:seed": "node scripts/seed.js",
     "worker:notifications": "node workers/notification.worker.js",
-    "test": "node --test --test-concurrency=1",
+    "test": "node --test --test-concurrency=1 tests/unit/*.test.js tests/integration/auth.test.js tests/integration/authorization.test.js",
+    "test:db": "node --test --test-concurrency=1 tests/integration/*.test.js",
+    "test:docker": "docker compose -f compose.test.yaml up --build --abort-on-container-exit --exit-code-from test",
+    "test:docker:down": "docker compose -f compose.test.yaml down -v --remove-orphans",
     "format": "prettier --write .",
     "format:check": "prettier --check ."
   },

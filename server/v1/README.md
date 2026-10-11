@@ -1,6 +1,6 @@
-# Mini CRM API (authentication foundation)
+# LeadFlow API
 
-This folder currently implements the authentication foundation and the database schema for the Lead Assignment System. The empty lead, assignment, activity and dashboard files are extension points; their endpoints are not registered yet.
+Complete Express/MySQL backend for the LeadFlow CRM. It includes authentication, users, leads, activities, assignments, reassignment requests, dashboard reporting, Redis rate limiting/cache, BullMQ email delivery, idempotency, and persistent Socket.IO notifications. See the repository-level [`README.md`](../../README.md) for the feature matrix, architecture, local setup, testing, production URLs, and VPS deployment.
 
 ## Run locally
 
@@ -30,7 +30,7 @@ Change `JWT_SECRET`, `ADMIN_PASSWORD`, and database passwords before any deploym
 - `GET /auth/me` — header: `Authorization: Bearer <accessToken>`
 - `GET /health` — public health response
 
-There is deliberately no public registration endpoint. Admin creation is a deployment/bootstrap action (`npm run db:seed`); future sales-user creation belongs behind an admin-only endpoint.
+There is deliberately no public registration endpoint. Admin creation is a deployment/bootstrap action (`npm run db:seed`); sales-user creation is available only through the authenticated admin endpoint.
 
 ## User-management API
 
@@ -76,7 +76,7 @@ Redis is deliberately limited to temporary operational data:
 
 - `POST /auth/login` uses an atomic fixed-window counter per IP (10 attempts per 60 seconds by default). It returns HTTP 429 and `Retry-After` when exceeded. If Redis is unavailable, it fails open so an infrastructure outage does not lock everyone out.
 - `GET /dashboard` caches each role/user/date-range result for 60 seconds. Lead creation, update, status change, and assignment invalidate dashboard keys. Cache failures fall back to MySQL.
-- Successful assignments enqueue a BullMQ `lead-assigned` notification only after the MySQL transaction commits. Run `npm run worker:notifications` to consume it. Jobs retry three times with exponential backoff. The worker currently logs the notification payload; an email/SMS provider can replace that handler.
+- Successful assignments enqueue BullMQ email jobs only after the MySQL transaction commits. Run `npm run worker:notifications` to consume them. Jobs retry three times with exponential backoff. Persistent in-app notifications are stored in MySQL and delivered in real time through authenticated Socket.IO rooms.
 
 Redis is not used for users, leads, assignments, duplicate checks, idempotency, or audit history. Those require MySQL's durable constraints and transactions.
 
