@@ -1,2 +1,6 @@
 User-agent: *
 Disallow: /
+Allow: /$
+Allow: /og-leadflow.png
+Allow: /favicon.svg
+Allow: /site.webmanifest
