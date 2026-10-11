@@ -1,4 +1,13 @@
-import { BriefcaseBusiness, LayoutDashboard, LogOut, Menu, Repeat2, Users, X } from 'lucide-react';
+import {
+  BriefcaseBusiness,
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  Repeat2,
+  UserCircle,
+  Users,
+  X,
+} from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
@@ -8,6 +17,7 @@ const links = [
   { to: '/leads', label: 'Leads', icon: BriefcaseBusiness },
   { to: '/users', label: 'Sales users', icon: Users, admin: true },
   { to: '/reassignments', label: 'Reassignments', icon: Repeat2, admin: true },
+  { to: '/profile', label: 'My profile', icon: UserCircle },
 ];
 
 export default function AppShell({ title, eyebrow, actions, children }) {

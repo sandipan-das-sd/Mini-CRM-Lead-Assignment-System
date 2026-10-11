@@ -5,6 +5,7 @@ import DashboardPage from './pages/DashboardPage';
 import LeadDetailPage from './pages/LeadDetailPage';
 import LeadsPage from './pages/LeadsPage';
 import LoginPage from './pages/LoginPage';
+import ProfilePage from './pages/ProfilePage';
 import ReassignmentPage from './pages/ReassignmentPage';
 import UsersPage from './pages/UsersPage';
 
@@ -51,6 +52,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <ReassignmentPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <ProfilePage />
               </ProtectedRoute>
             }
           />
