@@ -6,6 +6,8 @@ Production-oriented CRM for capturing, deduplicating, assigning, and tracking sa
 
 - Frontend: https://crm.sandipandas.website
 - API health: https://api.sandipandas.website/api/v1/health
+- Interactive API documentation: https://api.sandipandas.website/api-docs
+- Raw OpenAPI specification: https://api.sandipandas.website/openapi.yaml
 - OpenAPI source: [`server/v1/docs/openapi.yaml`](server/v1/docs/openapi.yaml)
 - Deployment guide: [`DEPLOYMENT.md`](DEPLOYMENT.md)
 
