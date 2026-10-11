@@ -16,6 +16,10 @@ const schema = z.object({
   JWT_EXPIRES_IN: z.string().default('15m'),
   BCRYPT_ROUNDS: z.coerce.number().int().min(10).max(14).default(12),
   CORS_ORIGIN: z.string().default('http://localhost:5173'),
+  TRUST_PROXY: z
+    .enum(['true', 'false'])
+    .transform((value) => value === 'true')
+    .default(false),
   REDIS_URL: z.string().url().default('redis://127.0.0.1:6379'),
   LOGIN_RATE_LIMIT_MAX: z.coerce.number().int().min(1).default(10),
   LOGIN_RATE_LIMIT_WINDOW_SECONDS: z.coerce.number().int().min(1).default(60),

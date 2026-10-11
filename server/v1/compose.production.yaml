@@ -1,0 +1,110 @@
+name: leadflow
+
+x-backend: &backend
+  build:
+    context: .
+    dockerfile: Dockerfile
+  env_file:
+    - ${BACKEND_ENV_FILE:-.env.production}
+  environment:
+    DB_HOST: mysql
+    DB_PORT: 3306
+    REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+  networks:
+    - leadflow_private
+
+services:
+  api:
+    <<: *backend
+    command: node server.js
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - '127.0.0.1:4000:4000'
+    healthcheck:
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:4000/api/v1/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  worker:
+    <<: *backend
+    command: node workers/notification.worker.js
+    restart: unless-stopped
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  migrate:
+    <<: *backend
+    command: node scripts/migrate.js
+    restart: 'no'
+    profiles: [tools]
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  seed:
+    <<: *backend
+    command: node scripts/seed.js
+    restart: 'no'
+    profiles: [tools]
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  mysql:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_NAME}
+      MYSQL_USER: ${DB_USER}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    volumes:
+      - mysql_production_data:/var/lib/mysql
+    networks:
+      - leadflow_private
+    healthcheck:
+      test: ['CMD-SHELL', 'mysqladmin ping -h localhost -uroot -p"$$MYSQL_ROOT_PASSWORD" --silent']
+      interval: 10s
+      timeout: 5s
+      retries: 20
+      start_period: 20s
+
+  redis:
+    image: redis:7.4-alpine
+    restart: unless-stopped
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+    command: ['sh', '-c', 'exec redis-server --appendonly yes --requirepass "$$REDIS_PASSWORD"']
+    volumes:
+      - redis_production_data:/data
+    networks:
+      - leadflow_private
+    healthcheck:
+      test: ['CMD-SHELL', 'redis-cli -a "$$REDIS_PASSWORD" --no-auth-warning ping | grep PONG']
+      interval: 10s
+      timeout: 5s
+      retries: 20
+
+networks:
+  leadflow_private:
+    driver: bridge
+
+volumes:
+  mysql_production_data:
+  redis_production_data:

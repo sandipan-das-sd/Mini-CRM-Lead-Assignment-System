@@ -26,8 +26,7 @@ async function sendTemplateEmail({ to, template, data }) {
     text: rendered.text,
     html: rendered.html,
   });
-  if (!env.SMTP_HOST) 
-    console.log('Development email generated:', info.message);
+  if (!env.SMTP_HOST) console.log('Development email generated:', info.message);
   return info;
 }
 

@@ -8,8 +8,7 @@ const connection = new IORedis(env.REDIS_URL, { maxRetriesPerRequest: null });
 const worker = new Worker(
   'notifications',
   async (job) => {
-    if (job.name !== 'send-email') 
-      throw new Error(`Unsupported job: ${job.name}`);
+    if (job.name !== 'send-email') throw new Error(`Unsupported job: ${job.name}`);
     await sendTemplateEmail(job.data);
     console.log(`Email job ${job.id} sent using ${job.data.template}`);
   },

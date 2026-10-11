@@ -4,7 +4,10 @@ info:
   version: 1.0.0
   description: REST API for authentication, users, leads, activities, assignments, and reporting.
 servers:
+  - url: https://api.sandipandas.website/api/v1
+    description: Production
   - url: http://localhost:4000/api/v1
+    description: Local development
 tags:
   - name: Authentication
   - name: Users

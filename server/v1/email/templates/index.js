@@ -77,15 +77,15 @@ function reassignmentReviewed(data) {
 }
 
 const templates = {
-   welcome,
-    leadAssigned,
-     reassignmentRequested, 
-     reassignmentReviewed };
+  welcome,
+  leadAssigned,
+  reassignmentRequested,
+  reassignmentReviewed,
+};
 
 function renderTemplate(name, data) {
   const template = templates[name];
-  if (!template) 
-    throw new Error(`Unknown email template: ${name}`);
+  if (!template) throw new Error(`Unknown email template: ${name}`);
   return template(data);
 }
 
