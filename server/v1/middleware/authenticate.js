@@ -7,7 +7,8 @@ async function authenticate(req, _res, next) {
     const authorization = req.get('authorization') || '';
     const [scheme, token] = authorization.split(' ');
     if (scheme !== 'Bearer' || !token)
-      throw new AppError(401, 'AUTHENTICATION_REQUIRED', 'A valid Bearer token is required');
+      throw new AppError(401, 'AUTHENTICATION_REQUIRED', 
+    'A valid Bearer token is required');
 
     let payload;
     try {
